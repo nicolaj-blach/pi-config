@@ -11,4 +11,4 @@ programs.pi-coding-agent.enable = true;
 pi-config.logo = ./logo.svg;
 ```
 
-After changing something, push and run `nix flake update pi-config` in `~/nixos`.
+After changing something, push and run `nix flake update pi-config` in `~/setup/nixos`.

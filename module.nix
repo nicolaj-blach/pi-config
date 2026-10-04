@@ -170,9 +170,7 @@ in
               };
               external_directory = {
                 "*" = "ask";
-                "~/nixos/*" = "allow";
-                "~/projects/personal/agent-markdown-files/*" = "allow";
-                "~/projects/personal/pi-config/*" = "allow";
+                "~/setup/*" = "allow";
                 "/tmp/*" = "allow";
                 "/nix/store/*" = "allow";
               };
