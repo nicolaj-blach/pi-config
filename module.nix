@@ -108,7 +108,10 @@ in
         doubleEscapeAction = "none";
         piVim.clipboardMirror = "all";
         skills = [ "${md}/skills" ];
-        extensions = [ "${header}" ];
+        extensions = [
+          "${header}"
+          "${./files/last-model}"
+        ];
         # The header extension replaces powerline's welcome; its status bar stays
         powerline.welcome = false;
         # Installed by pi into ~/.pi/agent/npm on first start
