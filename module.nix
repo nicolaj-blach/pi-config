@@ -31,21 +31,35 @@ let
   '';
 
   # settings.json is read-only, so pi can't save the default model: start on the
-  # model the most recent session last switched to, unless one is given.
+  # model and thinking level the most recent session last switched to, unless given.
   # PI_CODING_AGENT_SESSION_DIR keeps the assistant's sessions (and model) separate.
-  lastModel = pkgs.writeShellScript "pi-last-model" ''
+  # $1 is "model" or "thinking".
+  lastSetting = pkgs.writeShellScript "pi-last-setting" ''
     dir=''${PI_CODING_AGENT_SESSION_DIR:-$HOME/.pi/agent/sessions}
-    f=$(ls -t "$dir"/*.jsonl "$dir"/*/*.jsonl 2>/dev/null | head -n1)
+    f=$(ls -t -- "$dir"/*.jsonl "$dir"/*/*.jsonl 2>/dev/null | head -n1)
     [ -n "$f" ] || exit 0
-    ${lib.getExe pkgs.jq} -r 'select(.type == "model_change") | "\(.provider)/\(.modelId)"' "$f" | tail -n1
+    case $1 in
+      model) q='select(.type == "model_change") | "\(.provider)/\(.modelId)"' ;;
+      thinking) q='select(.type == "thinking_level_change") | .thinkingLevel' ;;
+    esac
+    ${lib.getExe pkgs.jq} -r "$q" "$f" | tail -n1
   '';
 
   # pi-vim only outside Emacs: inside ghostel, evil owns Esc
   piVim = pkgs.writeShellScriptBin "pi" ''
     export NPM_CONFIG_USERCONFIG=${npmrc}
     case " $* " in
-      *" --model "* | *" --model="* | *" -c "* | *" --continue "* | *" -r "* | *" --resume "* | *" --session "*) ;;
-      *) m=$(${lastModel}); [ -n "$m" ] && set -- --model "$m" "$@" ;;
+      *" -c "* | *" --continue "* | *" -r "* | *" --resume "* | *" --session "*) ;;
+      *)
+        case " $* " in
+          *" --model "* | *" --model="*) ;;
+          *) m=$(${lastSetting} model); [ -n "$m" ] && set -- --model "$m" "$@" ;;
+        esac
+        case " $* " in
+          *" --thinking "* | *" --thinking="*) ;;
+          *) t=$(${lastSetting} thinking); [ -n "$t" ] && set -- --thinking "$t" "$@" ;;
+        esac
+        ;;
     esac
     [ -n "''${INSIDE_EMACS:-}" ] || set -- -e npm:pi-vim@0.14.2 "$@"
     exec ${lib.getExe pi} "$@"
