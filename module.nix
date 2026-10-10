@@ -22,6 +22,46 @@ let
       ${config.pi-config.logo} -o $out/logo.png
   '';
 
+  # Focus the pi with PID $1: its ghostel buffer (and Emacs frame) or its kitty window
+  focus = pkgs.writeShellScript "pi-focus" ''
+    PATH=${lib.makeBinPath [ pkgs.jq pkgs.procps ]}:$PATH
+    pids="" p=$1
+    while [ -n "$p" ] && [ "$p" -gt 1 ]; do
+      pids="$pids $p"
+      p=$(ps -o ppid= -p "$p" | tr -d ' ')
+    done
+    windows=$(niri msg -j windows) || exit 0
+    if [ -n "''${INSIDE_EMACS:-}" ]; then
+      frame=$(emacsclient -e "
+        (let ((buf (seq-find (lambda (b)
+                               (with-current-buffer b
+                                 (and (derived-mode-p 'ghostel-mode)
+                                      (memq ghostel--pid '($pids)))))
+                             (buffer-list))))
+          (when buf
+            (let* ((win (get-buffer-window buf t))
+                   (frame (if win (window-frame win) (selected-frame))))
+              (select-frame-set-input-focus frame)
+              (if win (select-window win) (pop-to-buffer buf))
+              (frame-parameter frame 'name))))" | sed 's/^"//;s/"$//')
+      id=$(jq -r --arg t "$frame" '
+        (map(select(.app_id == "emacs" and .title == $t)) + map(select(.app_id == "emacs")))
+        | .[0].id // empty' <<<"$windows")
+    else
+      id=$(jq -r --arg p "$pids" '
+        ($p | split(" ") | map(select(. != "") | tonumber)) as $ps
+        | map(select(.pid as $w | $ps | index($w))) | .[0].id // empty' <<<"$windows")
+    fi
+    [ -n "$id" ] && niri msg action focus-window --id "$id"
+  '';
+
+  status = pkgs.runCommand "pi-status" { } ''
+    mkdir $out
+    substitute ${./files/status/index.ts} $out/index.ts \
+      --replace-fail @notifySend@ ${lib.getExe' pkgs.libnotify "notify-send"} \
+      --replace-fail @focus@ ${focus}
+  '';
+
   # Quiet the npm installs pi runs for its packages (warnings, funding, audit)
   npmrc = pkgs.writeText "pi-npmrc" ''
     loglevel=error
@@ -111,6 +151,8 @@ in
         extensions = [
           "${header}"
           "${./files/last-model}"
+          "${status}"
+          "${./files/handoff}"
         ];
         # The header extension replaces powerline's welcome; its status bar stays
         powerline.welcome = false;
