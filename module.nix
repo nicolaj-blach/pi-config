@@ -166,6 +166,7 @@ in
           "npm:@gotgenes/pi-permission-system@39.0.3"
           "npm:plan-mode-lite@0.1.7"
           "npm:pi-powerline-footer@0.19.1"
+          "npm:pi-mono-btw@1.7.4"
         ];
       };
 
