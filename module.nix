@@ -62,6 +62,24 @@ let
       --replace-fail @focus@ ${focus}
   '';
 
+  # rpiv-ask-user-question with hjkl navigation (its keys are hardcoded). A local
+  # package, so pi doesn't install its dependency: bundle rpiv-config.
+  askUserQuestion =
+    let
+      npm =
+        name: hash:
+        pkgs.fetchurl {
+          url = "https://registry.npmjs.org/@juicesharp/${name}/-/${name}-2.12.0.tgz";
+          inherit hash;
+        };
+    in
+    pkgs.runCommand "rpiv-ask-user-question-hjkl" { nativeBuildInputs = [ pkgs.patch ]; } ''
+      mkdir -p $out/node_modules/@juicesharp/rpiv-config
+      tar -xzf ${npm "rpiv-ask-user-question" "sha512-DilWc7u25SwnK6ytuAWOTerP0AmOEfK4HXpgS1oEzkgv9d5g5T+PbLG+zcLn18M3B/J3poMG14iydG5O6iBsnw=="} -C $out --strip-components=1
+      tar -xzf ${npm "rpiv-config" "sha512-eGjoCDCKz2JtKIUIpZ2y8CAVjxZYXCKa2D64ByozhkAWVblXsgyFLrQMk5k5Bv5RXRrA3GY66XNG5ExtEuGASA=="} -C $out/node_modules/@juicesharp/rpiv-config --strip-components=1
+      patch -d $out -p1 < ${./files/ask-user-question/hjkl.patch}
+    '';
+
   # Quiet the npm installs pi runs for its packages (warnings, funding, audit)
   npmrc = pkgs.writeText "pi-npmrc" ''
     loglevel=error
@@ -160,7 +178,7 @@ in
         packages = [
           "npm:pi-subagents@0.75.0"
           "npm:pi-web-access@0.35.0"
-          "npm:@juicesharp/rpiv-ask-user-question@2.12.0"
+          "${askUserQuestion}"
           "npm:@juicesharp/rpiv-todo@2.12.0"
           "npm:pi-lens@4.3.0"
           "npm:@gotgenes/pi-permission-system@39.0.3"
@@ -182,6 +200,18 @@ in
           "down"
           "ctrl+j"
         ];
+        # /tree: H/L jump between branches (the search ignores case); labels move to E
+        "app.tree.foldOrUp" = [
+          "ctrl+left"
+          "alt+left"
+          "shift+h"
+        ];
+        "app.tree.unfoldOrDown" = [
+          "ctrl+right"
+          "alt+right"
+          "shift+l"
+        ];
+        "app.tree.editLabel" = "shift+e";
       };
     };
 
@@ -189,6 +219,36 @@ in
       ".pi/agent/themes/onedark.json".source = ./files/onedark.json;
       # User scope, so same-name agents (reviewer) replace pi-subagents' built-ins
       ".pi/agent/agents".source = "${md}/agents";
+      # Fleet inspector: hjkl, g/G; J/K keep scrolling the transcript
+      ".pi/agent/extensions/subagent/config.json".source = json.generate "pi-subagents.json" {
+        fleetKeybindings = {
+          selectUp = [
+            "up"
+            "k"
+          ];
+          selectDown = [
+            "down"
+            "j"
+          ];
+          inspect = [
+            "return"
+            "l"
+          ];
+          close = [
+            "escape"
+            "q"
+            "h"
+          ];
+          selectFirst = [
+            "home"
+            "g"
+          ];
+          selectLast = [
+            "end"
+            "G"
+          ];
+        };
+      };
       ".pi/agent/plan-mode-lite.json".source = json.generate "plan-mode-lite.json" {
         defaultOn = false;
         toggleShortcut = "shift+tab";

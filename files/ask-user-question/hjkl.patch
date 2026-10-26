@@ -1,0 +1,39 @@
+--- a/state/key-router.ts
++++ b/state/key-router.ts
+@@ -123,10 +123,10 @@
+ ): QuestionnaireAction | null {
+ 	if (!runtime.isMulti) return null;
+ 	const total = totalTabs(runtime);
+-	if (matchesKey(data, Key.tab) || matchesKey(data, Key.right)) {
++	if (matchesKey(data, Key.tab) || matchesKey(data, Key.right) || data === "l" || data === "L") {
+ 		return { kind: "tab_switch", nextTab: wrapTab(state.currentTab + 1, total) };
+ 	}
+-	if (matchesKey(data, Key.shift("tab")) || matchesKey(data, Key.left)) {
++	if (matchesKey(data, Key.shift("tab")) || matchesKey(data, Key.left) || data === "h" || data === "H") {
+ 		return { kind: "tab_switch", nextTab: wrapTab(state.currentTab - 1, total) };
+ 	}
+ 	return null;
+@@ -200,8 +200,8 @@
+ 	if (kb.matches(data, KEYBIND_CANCEL)) return { kind: "cancel" };
+ 	const tab = tabSwitchAction(data, state, runtime);
+ 	if (tab) return tab;
+-	if (kb.matches(data, KEYBIND_UP) || kb.matches(data, KEYBIND_DOWN)) {
+-		const delta = kb.matches(data, KEYBIND_DOWN) ? 1 : -1;
++	if (kb.matches(data, KEYBIND_UP) || kb.matches(data, KEYBIND_DOWN) || data === "k" || data === "j") {
++		const delta = kb.matches(data, KEYBIND_DOWN) || data === "j" ? 1 : -1;
+ 		const next = wrapTab(state.submitChoiceIndex + delta, 2);
+ 		return { kind: "submit_nav", nextIndex: (next === 1 ? 1 : 0) as 0 | 1 };
+ 	}
+@@ -341,10 +341,10 @@
+ 		return { kind: "notes_enter" };
+ 	}
+ 
+-	if (kb.matches(data, KEYBIND_UP)) {
++	if (kb.matches(data, KEYBIND_UP) || data === "k") {
+ 		return prevNavOnUp(state, runtime);
+ 	}
+-	if (kb.matches(data, KEYBIND_DOWN)) {
++	if (kb.matches(data, KEYBIND_DOWN) || data === "j") {
+ 		return nextNavOnDown(state, runtime);
+ 	}
+ 
