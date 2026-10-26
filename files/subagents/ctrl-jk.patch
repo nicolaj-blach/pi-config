@@ -1,0 +1,44 @@
+--- a/src/tui/fleet-status.js
++++ b/src/tui/fleet-status.js
+@@ -690,7 +690,7 @@
+             return undefined;
+         }
+         if (!this.active) {
+-            const activates = matchesKey(data, "down") || matchesKey(data, "left");
++            const activates = matchesKey(data, "ctrl+j");
+             if (!activates || ctx.ui.getEditorText() !== "")
+                 return undefined;
+             this.active = true;
+@@ -700,12 +700,12 @@
+         }
+         const roster = this.rosterKeys();
+         const selectedIndex = Math.max(0, roster.indexOf(this.selectedKey));
+-        if (matchesKey(data, "down") || matchesKey(data, "j")) {
++        if (matchesKey(data, "ctrl+j") || matchesKey(data, "j")) {
+             this.selectedKey = roster[Math.min(roster.length - 1, selectedIndex + 1)] ?? "main";
+             this.refresh();
+             return { consume: true };
+         }
+-        if (matchesKey(data, "up") || matchesKey(data, "k")) {
++        if (matchesKey(data, "ctrl+k") || matchesKey(data, "k")) {
+             if (selectedIndex === 0) {
+                 this.deactivate();
+                 return { consume: true };
+@@ -769,7 +769,7 @@
+             const usage = hasWorkflow
+                 ? nativeEntries.length > 0 ? `standalone: ${nativeUsage} · workflow usage on child rows` : "usage on child rows"
+                 : nativeUsage;
+-            const detail = [showNativeSummary ? usage : undefined, "↓/← to inspect"].filter(Boolean).join(" · ");
++            const detail = [showNativeSummary ? usage : undefined, "ctrl+j to inspect"].filter(Boolean).join(" · ");
+             return [truncateToWidth(`  ${theme.fg("muted", label)}${label && detail ? " · " : ""}${theme.fg("dim", detail)}`, width)];
+         }
+         const roster = this.rosterKeys();
+@@ -779,7 +779,7 @@
+             if (!rosterIndexByKey.has(entry.key))
+                 rosterIndexByKey.set(entry.key, index + 1);
+         }
+-        const lines = [truncateToWidth(`  ${theme.fg("dim", "↑↓/jk select · enter inspect · esc back")}`, width), ""];
++        const lines = [truncateToWidth(`  ${theme.fg("dim", "j/k select · enter inspect · esc back")}`, width), ""];
+         lines.push(truncateToWidth(`  ${this.bullet(0, selectedIndex, theme)} main`, width));
+         const workEntries = this.entries.filter((entry) => !entry.surface);
+         const tree = fleetTreeRows(workEntries);

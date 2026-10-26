@@ -62,23 +62,76 @@ let
       --replace-fail @focus@ ${focus}
   '';
 
-  # rpiv-ask-user-question with hjkl navigation (its keys are hardcoded). A local
-  # package, so pi doesn't install its dependency: bundle rpiv-config.
-  askUserQuestion =
-    let
-      npm =
-        name: hash:
-        pkgs.fetchurl {
-          url = "https://registry.npmjs.org/@juicesharp/${name}/-/${name}-2.12.0.tgz";
-          inherit hash;
-        };
-    in
-    pkgs.runCommand "rpiv-ask-user-question-hjkl" { nativeBuildInputs = [ pkgs.patch ]; } ''
-      mkdir -p $out/node_modules/@juicesharp/rpiv-config
-      tar -xzf ${npm "rpiv-ask-user-question" "sha512-DilWc7u25SwnK6ytuAWOTerP0AmOEfK4HXpgS1oEzkgv9d5g5T+PbLG+zcLn18M3B/J3poMG14iydG5O6iBsnw=="} -C $out --strip-components=1
-      tar -xzf ${npm "rpiv-config" "sha512-eGjoCDCKz2JtKIUIpZ2y8CAVjxZYXCKa2D64ByozhkAWVblXsgyFLrQMk5k5Bv5RXRrA3GY66XNG5ExtEuGASA=="} -C $out/node_modules/@juicesharp/rpiv-config --strip-components=1
-      patch -d $out -p1 < ${./files/ask-user-question/hjkl.patch}
+  # Patched npm packages for vim keys where they are hardcoded. Local packages,
+  # so pi doesn't install their dependencies: bundle them (none have their own).
+  npmTgz =
+    name: version: hash:
+    pkgs.fetchurl {
+      url = "https://registry.npmjs.org/${name}/-/${baseNameOf name}-${version}.tgz";
+      inherit hash;
+    };
+  patchedNpm =
+    {
+      name,
+      version,
+      hash,
+      deps ? [ ],
+      patch,
+    }:
+    pkgs.runCommand "${baseNameOf name}-${version}-vim" { nativeBuildInputs = [ pkgs.patch ]; } ''
+      mkdir $out
+      tar -xzf ${npmTgz name version hash} -C $out --strip-components=1
+      ${lib.concatMapStrings (d: ''
+        mkdir -p $out/node_modules/${d.name}
+        tar -xzf ${npmTgz d.name d.version d.hash} -C $out/node_modules/${d.name} --strip-components=1
+      '') deps}
+      patch -d $out -p1 < ${patch}
     '';
+
+  # hjkl in question dialogs
+  askUserQuestion = patchedNpm {
+    name = "@juicesharp/rpiv-ask-user-question";
+    version = "2.12.0";
+    hash = "sha512-DilWc7u25SwnK6ytuAWOTerP0AmOEfK4HXpgS1oEzkgv9d5g5T+PbLG+zcLn18M3B/J3poMG14iydG5O6iBsnw==";
+    deps = [
+      {
+        name = "@juicesharp/rpiv-config";
+        version = "2.12.0";
+        hash = "sha512-eGjoCDCKz2JtKIUIpZ2y8CAVjxZYXCKa2D64ByozhkAWVblXsgyFLrQMk5k5Bv5RXRrA3GY66XNG5ExtEuGASA==";
+      }
+    ];
+    patch = ./files/ask-user-question/hjkl.patch;
+  };
+
+  # Ctrl+J/K instead of the arrows for the FleetView under the editor
+  subagents = patchedNpm {
+    name = "pi-subagents";
+    version = "0.75.0";
+    hash = "sha512-RO4DiTJM6pnK8y9PnD7Y6TLeiX2c8Kh6QhmkecFo+ou5qtnz5qiM+vUKru48UmJG1nB9eJ6rALd1M04uBOR4XQ==";
+    deps = [
+      {
+        name = "acorn";
+        version = "8.18.0";
+        hash = "sha512-lGq+9yr1/GuAWaVYIHRjvvySG5/4VfKIvC8EWxStPdcDh/Ka7FG3twP6v4d5BkravUilhIAsG4Qj83t02LWUPQ==";
+      }
+      {
+        name = "jiti";
+        version = "2.7.0";
+        hash = "sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==";
+      }
+      {
+        name = "undici";
+        version = "8.10.2";
+        hash = "sha512-/y4/bH9YNU5hi9NIrpOuvGXFcxrj3CMrV+/AYpowAYTpHn8gX/XPFjNy766FPoYY0miQhdW977JFWKGNhBdwyQ==";
+      }
+      {
+        name = "yaml";
+        version = "2.8.3";
+        hash = "sha512-AvbaCLOO2Otw/lW5bmh9d/WEdcDFdQp2Z2ZUH3pX9U2ihyUY0nvLv7J6TrWowklRGPYbB/IuIMfYgxaCPg5Bpg==";
+      }
+    ];
+    patch = ./files/subagents/ctrl-jk.patch;
+  };
 
   # Quiet the npm installs pi runs for its packages (warnings, funding, audit)
   npmrc = pkgs.writeText "pi-npmrc" ''
@@ -176,7 +229,7 @@ in
         powerline.welcome = false;
         # Installed by pi into ~/.pi/agent/npm on first start
         packages = [
-          "npm:pi-subagents@0.75.0"
+          "${subagents}"
           "npm:pi-web-access@0.35.0"
           "${askUserQuestion}"
           "npm:@juicesharp/rpiv-todo@2.12.0"
