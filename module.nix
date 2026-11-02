@@ -265,6 +265,8 @@ in
           "shift+l"
         ];
         "app.tree.editLabel" = "shift+e";
+        "app.session.new" = "ctrl+n";
+        "app.session.resume" = "ctrl+r";
       };
     };
 
